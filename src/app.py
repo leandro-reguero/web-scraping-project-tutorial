@@ -9,15 +9,19 @@ import re
 from numpy import random
 import numpy as np
 import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy import text
+from dotenv import load_dotenv
 
 
 
-# Defining the GET function to start scraping
+# definiendo la funcion del GET request para scrapear
 def get_scraped():
+    # la url destino
     global url
     url = 'https://ycharts.com/companies/TSLA/revenues'
 
-    # User-Agent rotation
+    # Rotacion User-Agent para evitar bloqueos
     user_agent_list = [ 
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36', 
 	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36', 
@@ -28,7 +32,7 @@ def get_scraped():
 
     headers = {'User-Agent': user_agent}
     
-    # GET Request with User-Agent choice
+    # llevar acabo la request y comprobar que fue exitosa
     response = requests.get(url, headers=headers)
     time.sleep(9)
     if response.status_code == 200:
@@ -39,24 +43,24 @@ def get_scraped():
     else:
         print(f"There was an error with code: {response.status_code}")
 
+# llamamos la funcion para recuperar los datos
 get_scraped()
-
+# creo listas vacías para almacenar mis valores
 v_list = []
 d_list = []
+
+# usando las funciones find_all, encuentro la informacion que quiero del html
 tables = soup.find_all('table', class_='table')
-
-
 dates = tables[0].find_all('td', class_=None) + tables[1].find_all('td', class_=None)
 values = tables[0].find_all('td', class_='text-right') + tables[1].find_all('td', class_='text-right')
 
-
+# guardo la informacion encontrada en mis listas
 for value in values:
     v_list.append(value.text.strip())
-
 for date in dates:
     d_list.append(date.text.strip())
 
-# Creando el DataFrame
+# Creando el DataFrame a partir de mis listas
 dicto = {'Date': d_list, 'Value': v_list}
 df = pd.DataFrame(dicto)
 
@@ -65,5 +69,24 @@ df['Date'] = pd.to_datetime(df['Date'])
 in_b = {'M': '*0.001', 'B': ''}
 df['Value'] = df['Value'].replace(in_b, regex=True).map(pd.eval).round(3)
 
-print(df)
+
+# Ahora a guardarlo en una base de datos
+
+# cargar el archivo .env
+load_dotenv()
+
+# Conectar con la base de datos
+def connect():
+    global engine 
+    connection_string = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}?"
+    print("Starting the connection...")
+    engine = create_engine(connection_string)
+    engine.connect()
+    return engine
+
+
+
+# Insertar la Tabla en la base de datos
+df.to_sql('Tesla_historic_value', con=connect(), if_exists='replace', index=False)
+
 
