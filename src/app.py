@@ -90,3 +90,15 @@ def connect():
 df.to_sql('Tesla_historic_value', con=connect(), if_exists='replace', index=False)
 
 
+# Cerrar la sesión
+with engine.connect() as conn:
+    conn.commit()
+    conn.close()
+
+
+# Ahora visualizaremos los datos
+plt.plot(df['Date'], df['Value'])
+plt.xticks()
+plt.show()
+
+
