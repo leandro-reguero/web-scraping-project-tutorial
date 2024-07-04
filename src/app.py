@@ -96,7 +96,7 @@ with engine.connect() as conn:
     conn.close()
 
 
-# Ahora visualizaremos los datos
+# Ahora visualizaremos los datos:
 plt.plot(df['Date'], df['Value'])
 plt.xticks()
 plt.show()
